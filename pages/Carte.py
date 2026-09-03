@@ -601,7 +601,7 @@ jardins_layer.add_to(
 
 folium.LayerControl(
 
-    collapsed=False
+    collapsed=True
 
 ).add_to(carte)
 
