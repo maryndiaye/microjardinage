@@ -2,7 +2,7 @@ import streamlit as st
 import geopandas as gpd
 import folium
 from folium.plugins import LocateControl
-from streamlit_folium import st_folium
+import streamlit_folium
 
 # ==================================================
 # CONFIGURATION
