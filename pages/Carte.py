@@ -185,18 +185,6 @@ carte = folium.Map(
 # FONDS DE CARTE
 # ==================================================
 
-folium.TileLayer(
-
-    "OpenStreetMap",
-
-    name="🗺️ OpenStreetMap",
-
-    overlay=False,
-
-    control=True
-
-).add_to(carte)
-
 
 folium.TileLayer(
 
