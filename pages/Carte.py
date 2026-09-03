@@ -588,16 +588,11 @@ jardins_layer.add_to(
 # ==================================================
 
 folium.LayerControl(
-    collapsed=True,
-    position="topright"
+
+    collapsed=True
+
 ).add_to(carte)
 
-# Affichage
-st_folium(
-    carte,
-    width="100%",
-    height=600
-)
 
 
 # ==================================================
