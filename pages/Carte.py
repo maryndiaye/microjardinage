@@ -1,12 +1,7 @@
 import streamlit as st
 import geopandas as gpd
 import folium
-from folium.plugins import LocateControl
-import streamlit_folium
-
-# ==================================================
-# CONFIGURATION
-# ==================================================
+from streamlit_folium import st_folium
 
 st.set_page_config(
     page_title="Carte des microjardins",
@@ -18,7 +13,7 @@ st.title("🌱 Carte interactive des microjardins de Dakar")
 
 
 # ==================================================
-# CORRECTION ENCODAGE
+# CORRECTION DE L'ENCODAGE
 # ==================================================
 
 def corriger_encodage(texte):
@@ -27,6 +22,8 @@ def corriger_encodage(texte):
         return texte
 
     corrections = {
+        "dâ": "d’",
+        "dâ€™": "d’",
         "Ã©": "é",
         "Ã¨": "è",
         "Ãª": "ê",
@@ -47,9 +44,7 @@ def corriger_encodage(texte):
         "ÃŽ": "Î",
         "Ã”": "Ô",
         "Ã›": "Û",
-        "Ã‡": "Ç",
-        "dâ": "d’",
-        "dâ€™": "d’"
+        "Ã‡": "Ç"
     }
 
     for ancien, nouveau in corrections.items():
@@ -75,7 +70,9 @@ except Exception as e:
     st.stop()
 
 
-# Correction des textes
+# ==================================================
+# CORRECTION ENCODAGE DES MICROJARDINS
+# ==================================================
 
 for colonne in jardins.columns:
 
@@ -86,7 +83,9 @@ for colonne in jardins.columns:
         )
 
 
-# CRS
+# ==================================================
+# CRS DES MICROJARDINS
+# ==================================================
 
 if jardins.crs is None:
 
@@ -118,7 +117,9 @@ except Exception as e:
     st.stop()
 
 
-# Correction des textes
+# ==================================================
+# CORRECTION ENCODAGE DES COMMUNES
+# ==================================================
 
 for colonne in communes.columns:
 
@@ -129,7 +130,9 @@ for colonne in communes.columns:
         )
 
 
-# CRS
+# ==================================================
+# CRS DES COMMUNES
+# ==================================================
 
 if communes.crs is None:
 
@@ -179,22 +182,6 @@ carte = folium.Map(
 
 
 # ==================================================
-# 📍 POSITION DE L'UTILISATEUR
-# ==================================================
-
-LocateControl(
-
-    auto_start=False,
-
-    strings={
-        "title": "Afficher ma position",
-        "popup": "Vous êtes ici"
-    }
-
-).add_to(carte)
-
-
-# ==================================================
 # FONDS DE CARTE
 # ==================================================
 
@@ -202,7 +189,11 @@ folium.TileLayer(
 
     "OpenStreetMap",
 
-    name="OpenStreetMap"
+    name="🗺️ OpenStreetMap",
+
+    overlay=False,
+
+    control=True
 
 ).add_to(carte)
 
@@ -211,7 +202,11 @@ folium.TileLayer(
 
     "CartoDB positron",
 
-    name="Carte claire"
+    name="⚪ Carte claire",
+
+    overlay=False,
+
+    control=True
 
 ).add_to(carte)
 
@@ -220,18 +215,24 @@ folium.TileLayer(
 
     "CartoDB dark_matter",
 
-    name="Carte sombre"
+    name="⚫ Carte sombre",
+
+    overlay=False,
+
+    control=True
 
 ).add_to(carte)
 
 
-# Satellite
+# ==================================================
+# FOND SATELLITAIRE
+# ==================================================
 
 folium.TileLayer(
 
-    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
 
-    attr="Esri",
+    attr="Google Satellite",
 
     name="🛰️ Satellite",
 
@@ -255,16 +256,39 @@ communes_layer = folium.FeatureGroup(
 )
 
 
-# On utilise NAME_4
+# ==================================================
+# RECHERCHE AUTOMATIQUE DU NOM DE COMMUNE
+# ==================================================
 
-if "NAME_4" in communes.columns:
+colonnes_nom = [
 
-    colonne_nom = "NAME_4"
+    "NAME_4",
+    "nom",
+    "NOM",
+    "Nom",
+    "NAME",
+    "Name",
+    "COMMUNE",
+    "Commune"
 
-else:
+]
 
-    colonne_nom = None
 
+colonne_nom = None
+
+
+for colonne in colonnes_nom:
+
+    if colonne in communes.columns:
+
+        colonne_nom = colonne
+
+        break
+
+
+# ==================================================
+# AJOUT DES COMMUNES
+# ==================================================
 
 for _, commune in communes.iterrows():
 
@@ -279,11 +303,22 @@ for _, commune in communes.iterrows():
         nom_commune = "Commune"
 
 
+    # Correction finale du nom
+    nom_commune = corriger_encodage(
+        nom_commune
+    )
+
+
     popup = f"""
 
-    <div style="width:200px">
+    <div style="
+        width:200px;
+        font-family:Arial;
+    ">
 
-        <h4>🏘️ {nom_commune}</h4>
+        <h4>
+            🏘️ {nom_commune}
+        </h4>
 
     </div>
 
@@ -316,10 +351,14 @@ for _, commune in communes.iterrows():
 
         )
 
-    ).add_to(communes_layer)
+    ).add_to(
+        communes_layer
+    )
 
 
-communes_layer.add_to(carte)
+communes_layer.add_to(
+    carte
+)
 
 
 # ==================================================
@@ -335,25 +374,40 @@ jardins_layer = folium.FeatureGroup(
 )
 
 
-# Recherche automatique du champ culture
+# ==================================================
+# RECHERCHE DU CHAMP DES VARIÉTÉS
+# ==================================================
 
-colonne_culture = None
-
-for colonne in jardins.columns:
-
-    if "Vari" in colonne:
-
-        colonne_culture = colonne
-
-        break
+champ_variete = None
 
 
-# Ajout des marqueurs
+if "VariÃ©tÃ©" in jardins.columns:
+
+    champ_variete = "VariÃ©tÃ©"
+
+else:
+
+    for colonne in jardins.columns:
+
+        if "Vari" in str(colonne):
+
+            champ_variete = colonne
+
+            break
+
+
+# ==================================================
+# AJOUT DES MICROJARDINS
+# ==================================================
 
 for _, jardin in jardins.iterrows():
 
     point = jardin.geometry
 
+
+    # ----------------------------------------------
+    # Nom du site
+    # ----------------------------------------------
 
     nom = jardin.get(
 
@@ -364,6 +418,10 @@ for _, jardin in jardins.iterrows():
     )
 
 
+    # ----------------------------------------------
+    # Responsable
+    # ----------------------------------------------
+
     responsable = jardin.get(
 
         "Responsabl",
@@ -373,11 +431,15 @@ for _, jardin in jardins.iterrows():
     )
 
 
-    if colonne_culture:
+    # ----------------------------------------------
+    # Variétés
+    # ----------------------------------------------
+
+    if champ_variete:
 
         varietes = jardin.get(
 
-            colonne_culture,
+            champ_variete,
 
             "Non renseignées"
 
@@ -388,6 +450,10 @@ for _, jardin in jardins.iterrows():
         varietes = "Non renseignées"
 
 
+    # ----------------------------------------------
+    # Commentaire
+    # ----------------------------------------------
+
     commentaire = jardin.get(
 
         "commentair",
@@ -397,40 +463,84 @@ for _, jardin in jardins.iterrows():
     )
 
 
-    # Gestion des valeurs vides
+    # ----------------------------------------------
+    # Valeurs manquantes
+    # ----------------------------------------------
 
-    if str(responsable) == "nan":
+    if str(nom).lower() == "nan":
+
+        nom = "Microjardin"
+
+
+    if str(responsable).lower() == "nan":
 
         responsable = "Non renseigné"
 
 
-    if str(varietes) == "nan":
+    if str(varietes).lower() == "nan":
 
         varietes = "Non renseignées"
 
 
-    if str(commentaire) == "nan":
+    if str(commentaire).lower() == "nan":
 
         commentaire = "Aucun commentaire"
 
 
+    # ----------------------------------------------
+    # Correction encodage
+    # ----------------------------------------------
+
+    nom = corriger_encodage(
+        str(nom)
+    )
+
+    responsable = corriger_encodage(
+        str(responsable)
+    )
+
+    varietes = corriger_encodage(
+        str(varietes)
+    )
+
+    commentaire = corriger_encodage(
+        str(commentaire)
+    )
+
+
+    # ==================================================
+    # POPUP
+    # ==================================================
+
     popup = f"""
 
-    <div style="width:300px">
+    <div style="
+        width:300px;
+        font-family:Arial;
+    ">
 
-        <h4>🌱 {nom}</h4>
+        <h4 style="
+            color:green;
+        ">
+            🌱 {nom}
+        </h4>
+
 
         <b>👤 Responsable :</b><br>
 
         {responsable}
 
+
         <br><br>
+
 
         <b>🌿 Variétés :</b><br>
 
         {varietes}
 
+
         <br><br>
+
 
         <b>📝 Commentaire :</b><br>
 
@@ -440,6 +550,10 @@ for _, jardin in jardins.iterrows():
 
     """
 
+
+    # ==================================================
+    # MARKER
+    # ==================================================
 
     folium.Marker(
 
@@ -471,10 +585,14 @@ for _, jardin in jardins.iterrows():
 
         )
 
-    ).add_to(jardins_layer)
+    ).add_to(
+        jardins_layer
+    )
 
 
-jardins_layer.add_to(carte)
+jardins_layer.add_to(
+    carte
+)
 
 
 # ==================================================
@@ -509,6 +627,8 @@ st_folium(
 
 st.success(
 
-    f"✅ {len(jardins)} microjardins affichés."
+    f"✅ {len(jardins)} microjardins affichés "
+    f"dans les limites des communes."
 
 )
+
